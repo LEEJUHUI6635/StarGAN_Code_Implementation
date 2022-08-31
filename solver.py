@@ -83,7 +83,8 @@ class Solver(object):
         self.d_optimizer = torch.optim.Adam(self.D.parameters(), self.d_lr, [self.beta1, self.beta2])
         self.print_network(self.G, 'G')
         self.print_network(self.D, 'D')
-            
+
+        # model -> device
         self.G.to(self.device)
         self.D.to(self.device)
 
@@ -178,7 +179,7 @@ class Solver(object):
     def classification_loss(self, logit, target, dataset='CelebA'):
         """Compute binary or softmax cross entropy loss."""
         if dataset == 'CelebA':
-            return F.binary_cross_entropy_with_logits(logit, target, size_average=False) / logit.size(0)
+            return F.binary_cross_entropy_with_logits(logit, target, size_average=False) / logit.size(0) # Binary Cross Entropy -> 정답과 예측의 불확실성을 낮추는 방향으로 학습
         elif dataset == 'RaFD':
             return F.cross_entropy(logit, target)
 
@@ -223,8 +224,9 @@ class Solver(object):
                 x_real, label_org = next(data_iter)
 
             # Generate target domain labels randomly.
-            rand_idx = torch.randperm(label_org.size(0))
-            label_trg = label_org[rand_idx]
+            # Generator에 input으로 image와 함께 넣어줘야 하는 target domain은 학습을 위해 random하게 생성된다.
+            rand_idx = torch.randperm(label_org.size(0)) # 16개의 label을 섞는다. 그 index를 rand_idx가 기억한다.
+            label_trg = label_org[rand_idx] # target domain은 target origin(origin label)을 random하게 섞어주는 것 뿐이다.
 
             if self.dataset == 'CelebA':
                 c_org = label_org.clone()
@@ -245,13 +247,13 @@ class Solver(object):
 
             # Compute loss with real images.
             out_src, out_cls = self.D(x_real)
-            d_loss_real = - torch.mean(out_src)
-            d_loss_cls = self.classification_loss(out_cls, label_org, self.dataset)
+            d_loss_real = - torch.mean(out_src) # real/fake -> real image를 판별할 때, out_src를 최대화하여야 한다. = real image는 1로 판별되어야 하기 때문
+            d_loss_cls = self.classification_loss(out_cls, label_org, self.dataset) # label과 label 사이의 loss -> 정답 label과 똑같이 classification이 되어야 한다. -> Binary Cross Entropy
 
             # Compute loss with fake images.
             x_fake = self.G(x_real, c_trg)
             out_src, out_cls = self.D(x_fake.detach())
-            d_loss_fake = torch.mean(out_src)
+            d_loss_fake = torch.mean(out_src) # real/fake -> fake image를 판별할 때, out_src를 최소화하여야 한다. = fake image는 0으로 판별되어야 하기 때문
 
             # Compute loss for gradient penalty.
             alpha = torch.rand(x_real.size(0), 1, 1, 1).to(self.device)
@@ -278,14 +280,15 @@ class Solver(object):
             
             if (i+1) % self.n_critic == 0:
                 # Original-to-target domain.
-                x_fake = self.G(x_real, c_trg)
+                x_fake = self.G(x_real, c_trg) # target domain의 fake image
                 out_src, out_cls = self.D(x_fake)
-                g_loss_fake = - torch.mean(out_src)
+                g_loss_fake = - torch.mean(out_src) # real/fake -> fake image를 판별할 때, out_src를 최대화하여야 한다. = real image는 1로 판별되어야 하기 때문
                 g_loss_cls = self.classification_loss(out_cls, label_trg, self.dataset)
 
                 # Target-to-original domain.
-                x_reconst = self.G(x_fake, c_org)
-                g_loss_rec = torch.mean(torch.abs(x_real - x_reconst))
+                # Cyclic Consistency Loss
+                x_reconst = self.G(x_fake, c_org) # target domain의 fake image를 다시 origin domain의 fake image로 만든다.
+                g_loss_rec = torch.mean(torch.abs(x_real - x_reconst)) # 두 이미지 픽셀들의 reconstruction loss
 
                 # Backward and optimize.
                 g_loss = g_loss_fake + self.lambda_rec * g_loss_rec + self.lambda_cls * g_loss_cls

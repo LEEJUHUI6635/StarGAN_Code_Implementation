@@ -39,8 +39,8 @@ class StarGAN_Generator(nn.Module):
         self.image_size = image_size
         self.generator_list = []
         self.down_sampling()
-        # self.bottleneck()
-        # self.up_sampling()
+        self.bottleneck()
+        self.up_sampling()
 
     def down_sampling(self):
         self.generator_list.append(nn.Conv2d(in_channels=3+self.domain_dim, out_channels=self.conv_dim, kernel_size=7, stride=1, padding=3))
@@ -65,16 +65,17 @@ class StarGAN_Generator(nn.Module):
             self.conv_dim = self.conv_dim // 2
         self.generator_list.append(nn.Conv2d(in_channels=self.conv_dim, out_channels=3, kernel_size=7, stride=1, padding=3))
         self.generator_list.append(nn.Tanh())
+        self.generator_block = nn.Sequential(*self.generator_list) # nn : parameter 선언 -> self로 받아 와서 우회해야 한다.
 
     def forward(self, image, label): # image, label
-        generator_block = nn.Sequential(*self.generator_list)
+        # generator_block = nn.Sequential(*self.generator_list)
 
         # image + label -> [16, 3+5, 128, 128]
         # image -> [16, 3, 128, 128], label -> [16, 5], 서로 다른 크기를 어떻게 붙일 것인가?
         label = label.reshape(self.batch_size, self.domain_dim, 1, 1)
         label = label.repeat(1, 1, self.image_size, self.image_size)
         out = torch.cat([image, label], dim = 1)
-        out = generator_block(out)
+        out = self.generator_block(out)
         return out
 
 # Discriminator : input -> image [height, width, 3], output -> src [height//64, width//64, 1] -> real/fake + cls [1, 1, domain] -> 어떠한 label인가?
@@ -86,8 +87,8 @@ class StarGAN_Discriminator(nn.Module):
         self.conv_dim = 64
         self.image_size = image_size
         self.input_layer()
-        # self.hidden_layer()
-        # self.output_layer()
+        self.hidden_layer()
+        self.output_layer()
 
     def input_layer(self):
         self.discriminator_layer.append(nn.Conv2d(in_channels=3, out_channels=self.conv_dim, kernel_size=4, stride=2, padding=1))

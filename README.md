@@ -1,4 +1,4 @@
-## StarGAN by JH
+## StarGAN Study 
 
 ```bash
 # Train StarGAN using the CelebA dataset
@@ -58,3 +58,6 @@ python main.py --mode test --dataset RaFD --rafd_crop_size CROP_SIZE --image_siz
                --c_dim LABEL_DIM --rafd_image_dir TEST_IMG_DIR \
                --sample_dir stargan_custom/samples --log_dir stargan_custom/logs \
                --model_save_dir stargan_custom/models --result_dir stargan_custom/results
+
+# Download Data in my Google Drive
+https://drive.google.com/drive/folders/1nSYZeW_oSaZvBcPVLMSEykmYHTX04Juy

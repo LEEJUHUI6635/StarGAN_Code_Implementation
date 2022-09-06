@@ -13,15 +13,15 @@ import numpy as np
 from PIL import Image
 import torchvision.transforms as transforms
 
-# 해당 폴더 안의 데이터 파일 경로를 리스트에 담아두는 과정이 필요하다.
-data_path = 'data/celeba/images/' # 상대 경로
-attr_path = 'data/celeba/list_attr_celeba.txt'
-target_attrs = ['Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Male', 'Young']
-crop_size = 178
-image_size = 128
-batch_size = 16
-mode = 'Train'
-num_workers = 1
+# # 해당 폴더 안의 데이터 파일 경로를 리스트에 담아두는 과정이 필요하다.
+# data_path = 'data/celeba/images/' # 상대 경로
+# attr_path = 'data/celeba/list_attr_celeba.txt'
+# target_attrs = ['Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Male', 'Young']
+# crop_size = 178
+# image_size = 128
+# batch_size = 16
+# mode = 'Train'
+# num_workers = 1
 
 # Custom Dataset
 class CelebA_DATASET(Dataset):
@@ -30,10 +30,11 @@ class CelebA_DATASET(Dataset):
         self.attr_path = attr_path # attribute 경로
         self.target_attrs = target_attrs # target attributes
         self.transform = transform
-        self.labeling()
+        self.labeling() # return 값이 없다.
 
+    # Black_Hair, Blond_Hair, Brown_Hair가 아니라면 Gray_Hair에 해당한다.
     def labeling(self): # image + one-hot vector
-        lines = [line.rstrip() for line in open(attr_path)]
+        lines = [line.rstrip() for line in open(self.attr_path)]
         attr_name = lines[1].split() # attribute name
         target_idx = []
         # attribute name에 해당하는 index 추출
@@ -43,7 +44,7 @@ class CelebA_DATASET(Dataset):
         lines = lines[2:] # line 하나의 첫 번째 값은 image명
 
         line_fin = []
-        for line in lines:
+        for line in lines: # 한 줄씩
             line_attr = []
             line = line.split()
             image_file = line[0]
@@ -53,17 +54,27 @@ class CelebA_DATASET(Dataset):
                 elif line[i] == '1':
                     line[i] = 1
                 line_attr.append(line[i]) # attribute -> one-hot encoding
+           
+            # line_attr[:3] -> ['Black_Hair', 'Blond_Hair', 'Brown_Hair']에 대해서 겹치는 부분을 처리해야 한다.
+            for j in range(len(line_attr[:3])): # j -> 0, 1, 2
+                if line_attr[j] == 1: # 가장 처음 보이는 1을 가진 line_attr[j]
+                    line_attr[j] = 1
+                    # 나머지 attribute = 0
+                    for k in range(len(line_attr[:3])): # k -> 0, 1, 2
+                        if k!= j:
+                            line_attr[k] = 0
+                
             line_fin.append([image_file, line_attr])
 
         self.line_fin = line_fin
 
     def __len__(self): # dataset 크기, shuffle을 위해서는 dataset 크기 선언해야 한다.
         return len(self.line_fin)
-
+    
     def __getitem__(self, index): # data sample을 이에 해당하는 label과 함께 불러온다. for문을 쓰지 않아도 for문의 역할을 한다. 따라서 getitem은 index 인자와 함께 쓰여야 한다.
         # self.line_fin [image, label]을 가져와서, os.path.join(attr_path, image)의 경로에서 이미지를 가져오고, label return
         image_path, label = self.line_fin[index] # debugging
-        image_path = image_path
+        # image_path = image_path
         image_path = os.path.join(self.data_path, image_path)
 
         # image_path에서 해당하는 image 불러오기
@@ -75,12 +86,12 @@ class CelebA_DATASET(Dataset):
 
         # image + label -> list
         sample = [image, image_label]
-
+        # sample = [image_path, image, image_label]
         return sample # class의 최종 output
 
 # DataLoader
 class CelebA_DATALOADER(object):
-    def __init__(self, data_path, attr_path, target_attrs, crop_size, image_size, batch_size, mode='Train', num_workers=num_workers):
+    def __init__(self, data_path, attr_path, target_attrs, crop_size, image_size, batch_size, mode, num_workers):
         self.data_path = data_path
         self.attr_path = attr_path
         self.target_attrs = target_attrs
@@ -89,8 +100,8 @@ class CelebA_DATALOADER(object):
         self.batch_size = batch_size
         self.mode = mode
         self.num_workers = num_workers
-        self.transform()
-        # self.data_loader()
+        self.transform() # return 값이 없다.
+        # self.data_loader() # return 값이 있다. -> Q. return 값이 있는데, 굳이 함수를 호출해야 하는가?
 
     def transform(self):
         transform_list = []
@@ -108,11 +119,4 @@ class CelebA_DATALOADER(object):
 
         return data_loader
 
-# data_loader = CelebA_DATALOADER(data_path, attr_path, target_attrs, crop_size, image_size, batch_size, mode)
-
-# for idx, [image, label] in enumerate(data_loader.data_loader()):
-#     print(image)
-#     print(label)
-#     print(type(image)) # Tensor
-#     print(type(label)) # Tensor
-#     break
+# data_loader = CelebA_DATALOADER(data_path, attr_path, target_attrs, crop_size, image_size, batch_size, mode, num_workers)

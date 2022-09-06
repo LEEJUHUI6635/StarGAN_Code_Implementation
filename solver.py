@@ -158,6 +158,7 @@ class Solver(object):
             for i, attr_name in enumerate(selected_attrs):
                 if attr_name in ['Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Gray_Hair']:
                     hair_color_indices.append(i)
+            # print(hair_color_indices)
 
         c_trg_list = []
         for i in range(c_dim):
@@ -240,7 +241,9 @@ class Solver(object):
             c_trg = c_trg.to(self.device)             # Target domain labels.
             label_org = label_org.to(self.device)     # Labels for computing classification loss.
             label_trg = label_trg.to(self.device)     # Labels for computing classification loss.
-
+            print(label_org)
+            print(label_trg)
+            break
             # =================================================================================== #
             #                             2. Train the discriminator                              #
             # =================================================================================== #
@@ -262,7 +265,8 @@ class Solver(object):
             d_loss_gp = self.gradient_penalty(out_src, x_hat)
 
             # Backward and optimize.
-            d_loss = d_loss_real + d_loss_fake + self.lambda_cls * d_loss_cls + self.lambda_gp * d_loss_gp
+            # d_loss = d_loss_real + d_loss_fake + self.lambda_cls * d_loss_cls + self.lambda_gp * d_loss_gp
+            d_loss = d_loss_real + d_loss_fake + 1 * d_loss_cls + 10 * d_loss_gp
             self.reset_grad()
             d_loss.backward()
             self.d_optimizer.step()
@@ -291,7 +295,8 @@ class Solver(object):
                 g_loss_rec = torch.mean(torch.abs(x_real - x_reconst)) # 두 이미지 픽셀들의 reconstruction loss
 
                 # Backward and optimize.
-                g_loss = g_loss_fake + self.lambda_rec * g_loss_rec + self.lambda_cls * g_loss_cls
+                # g_loss = g_loss_fake + self.lambda_rec * g_loss_rec + self.lambda_cls * g_loss_cls
+                g_loss = g_loss_fake + 10 * g_loss_rec + 1 * g_loss_cls
                 self.reset_grad()
                 g_loss.backward()
                 self.g_optimizer.step()

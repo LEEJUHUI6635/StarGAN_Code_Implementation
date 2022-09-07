@@ -42,7 +42,7 @@ class Solver(object):
         self.n_critic = config.n_critic
         self.beta1 = config.beta1
         self.beta2 = config.beta2
-        self.resume_iters = config.resume_iters
+        self.resume_iters = config.resume_iters # None
         self.selected_attrs = config.selected_attrs
 
         # Test configurations.
@@ -63,6 +63,11 @@ class Solver(object):
         self.sample_step = config.sample_step
         self.model_save_step = config.model_save_step
         self.lr_update_step = config.lr_update_step
+        
+        # JH
+        fixed_images, labels = next(iter(self.celeba_loader))
+
+        self.fixed_images = fixed_images.to(self.device)
 
         # Build the model and tensorboard.
         self.build_model()
@@ -108,7 +113,7 @@ class Solver(object):
     def build_tensorboard(self):
         """Build a tensorboard logger."""
         from logger import Logger
-        self.logger = Logger(self.log_dir)
+        self.logger = Logger(self.log_dir) # log_dir 생성
 
     def update_lr(self, g_lr, d_lr):
         """Decay learning rates of the generator and discriminator."""
@@ -175,6 +180,8 @@ class Solver(object):
                 c_trg = self.label2onehot(torch.ones(c_org.size(0))*i, c_dim)
 
             c_trg_list.append(c_trg.to(self.device))
+            # print('=====================================================================================================')
+            # print(c_trg_list)
         return c_trg_list
 
     def classification_loss(self, logit, target, dataset='CelebA'):
@@ -241,18 +248,19 @@ class Solver(object):
             c_trg = c_trg.to(self.device)             # Target domain labels.
             label_org = label_org.to(self.device)     # Labels for computing classification loss.
             label_trg = label_trg.to(self.device)     # Labels for computing classification loss.
-            print(label_org)
-            print(label_trg)
-            break
+            # print(label_org)
+            # print(label_trg)
+
             # =================================================================================== #
             #                             2. Train the discriminator                              #
             # =================================================================================== #
 
             # Compute loss with real images.
             out_src, out_cls = self.D(x_real)
-            d_loss_real = - torch.mean(out_src) # real/fake -> real image를 판별할 때, out_src를 최대화하여야 한다. = real image는 1로 판별되어야 하기 때문
-            d_loss_cls = self.classification_loss(out_cls, label_org, self.dataset) # label과 label 사이의 loss -> 정답 label과 똑같이 classification이 되어야 한다. -> Binary Cross Entropy
-
+            d_loss_real = - torch.mean(out_src) # A real/fake -> real image를 판별할 때, out_src를 최대화하여야 한다. = real image는 1로 판별되어야 하기 때문
+            d_loss_cls = self.classification_loss(out_cls, label_org, self.dataset) # B label과 label 사이의 loss -> 정답 label과 똑같이 classification이 되어야 한다. -> Binary Cross Entropy
+            print(label_org) # Float
+            break
             # Compute loss with fake images.
             x_fake = self.G(x_real, c_trg)
             out_src, out_cls = self.D(x_fake.detach())
@@ -320,25 +328,42 @@ class Solver(object):
                 print(log)
 
                 if self.use_tensorboard:
-                    for tag, value in loss.items():
+                    for tag, value in loss.items(): # loss directory에 있는 모든 loss에 대해서
                         self.logger.scalar_summary(tag, value, i+1)
 
             # Translate fixed images for debugging.
             if (i+1) % self.sample_step == 0:
-                with torch.no_grad():
-                    x_fake_list = [x_fixed]
-                    for c_fixed in c_fixed_list:
-                        x_fake_list.append(self.G(x_fixed, c_fixed))
-                    x_concat = torch.cat(x_fake_list, dim=3)
+                # with torch.no_grad():
+
+                    # JH
+                    fixed_trg_labels = torch.FloatTensor([[1, 0, 0, 1, 1]]) # 'Black_Hair', 'Man', 'Young' -> 'Old'로 나오는 것 같다.
+                    fixed_trg_labels = fixed_trg_labels.repeat(repeats=[16, 1])
+                    # fixed_trg_labels = fixed_trg_labels.to(self.device)
+                    fixed_trg_labels = fixed_trg_labels.to(self.device)
+                    result_fake_images = self.G(self.fixed_images, fixed_trg_labels)
+                    result_fake_images = (result_fake_images + 1) / 2
+                    result_fake_images = result_fake_images.clamp_(0, 1) # Q. clamp를 하지 않으면 안되나?
+                    # result_fake_images = torch.clamp_(result_fake_images, 0, 1)
+                    # result_fake_images = result_fake_images.clamp_(result_fake_images, 0, 1) # 최소값 -> 0, 최대값 -> 1로 강제적으로 mapping
+                    # print(result_fake_images.shape) #[16, 3, 128, 128]
+                    # real image + fake image
+                    result_images = torch.cat([self.fixed_images, result_fake_images], dim=0)
                     sample_path = os.path.join(self.sample_dir, '{}-images.jpg'.format(i+1))
-                    save_image(self.denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)
-                    print('Saved real and fake images into {}...'.format(sample_path))
+                    save_image(result_images, sample_path)
+
+                    # x_fake_list = [x_fixed]
+                    # for c_fixed in c_fixed_list:
+                    #     x_fake_list.append(self.G(x_fixed, c_fixed))
+                    # x_concat = torch.cat(x_fake_list, dim=3)
+                    # sample_path = os.path.join(self.sample_dir, '{}-images.jpg'.format(i+1))
+                    # save_image(self.denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)
+                    # print('Saved real and fake images into {}...'.format(sample_path))
 
             # Save model checkpoints.
             if (i+1) % self.model_save_step == 0:
                 G_path = os.path.join(self.model_save_dir, '{}-G.ckpt'.format(i+1))
                 D_path = os.path.join(self.model_save_dir, '{}-D.ckpt'.format(i+1))
-                torch.save(self.G.state_dict(), G_path)
+                torch.save(self.G.state_dict(), G_path) # model만 저장한다.
                 torch.save(self.D.state_dict(), D_path)
                 print('Saved model checkpoints into {}...'.format(self.model_save_dir))
 

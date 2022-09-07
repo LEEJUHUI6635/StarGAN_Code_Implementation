@@ -6,6 +6,10 @@ from JH_solver import Solver
 
 import argparse
 import os
+from torch.backends import cudnn
+
+# For fast training.
+cudnn.benchmark = True
 
 # Hyper parameter 정의
 
@@ -18,10 +22,11 @@ parser.add_argument('--crop_size', type=int, default=178)
 parser.add_argument('--image_size', type=int, default=128)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--mode', type=str, default='Train', choices=['Train', 'Test']) # [Train, Test]
-parser.add_argument('--num_workers', type=int, default=4) # core 개수(16)의 절반 = 8
+parser.add_argument('--num_workers', type=int, default=1) # core 개수(16)의 절반 = 8
 parser.add_argument('--domain_dim', type=int, default=5)
 # parser.add_argument('--nb_epochs', type=int, default=20)
 parser.add_argument('--nb_iters', type=int, default=200000)
+parser.add_argument('--resume_iters', type=int, default=None) # Q. 어떻게 자동화 시키지?
 
 parser.add_argument('--G_learning_rate', type=float, default=0.0001)
 parser.add_argument('--D_learning_rate', type=float, default=0.0001)
@@ -41,7 +46,7 @@ parser.add_argument('--lambda_recon', type=float, default=10)
 
 # save iteration
 parser.add_argument('--loss_iter', type=int, default=10)
-parser.add_argument('--result_iter', type=int, default=100)
+parser.add_argument('--result_iter', type=int, default=1000)
 parser.add_argument('--checkpoints_iter', type=int, default=10000)
 
 # folder path
@@ -53,6 +58,10 @@ parser.add_argument('--save_test_path', type=str, default='stargan_celeba/result
 parser.add_argument('--save_model_path', type=str, default='stargan_celeba/models/')
 parser.add_argument('--save_generator_path', type=str, default='stargan_celeba/models/generator/')
 parser.add_argument('--save_discriminator_path', type=str, default='stargan_celeba/models/discriminator/')
+
+# Logger
+parser.add_argument('--log_dir', type=str, default='stargan_logger')
+parser.add_argument('--logger_iter', type=int, default=10)
 
 config = parser.parse_args() # config에 위의 내용 저장
 
@@ -76,8 +85,8 @@ data_loader = CelebA_DATALOADER(data_path=config.data_path, attr_path=config.att
 data_loader = data_loader.data_loader()
 
 # Solver
-import random
-random.seed(1234)
+# import random
+# random.seed(1234)
 
 solver = Solver(config, data_loader)
 

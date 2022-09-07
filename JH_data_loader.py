@@ -31,15 +31,15 @@ class CelebA_DATASET(Dataset):
         self.target_attrs = target_attrs # target attributes
         self.transform = transform
         self.labeling() # return 값이 없다.
-
+    # Labeling이 잘 못 된 것이다.
     # Black_Hair, Blond_Hair, Brown_Hair가 아니라면 Gray_Hair에 해당한다.
     def labeling(self): # image + one-hot vector
         lines = [line.rstrip() for line in open(self.attr_path)]
-        attr_name = lines[1].split() # attribute name
+        attr_name = lines[1].split() # attribute name -> 첫 번째 줄
         target_idx = []
         # attribute name에 해당하는 index 추출
-        for i in range(len(attr_name)):
-            if attr_name[i] in self.target_attrs:
+        for i in range(len(attr_name)): # 40개의 attr_name
+            if attr_name[i] in self.target_attrs: 
                 target_idx.append(i)
         lines = lines[2:] # line 하나의 첫 번째 값은 image명
 
@@ -49,13 +49,13 @@ class CelebA_DATASET(Dataset):
             line = line.split()
             image_file = line[0]
             for i in target_idx:
-                if line[i] == '-1':
-                    line[i] = 0
-                elif line[i] == '1':
-                    line[i] = 1
-                line_attr.append(line[i]) # attribute -> one-hot encoding
+                if line[i + 1] == '-1':
+                    line[i + 1] = 0
+                elif line[i + 1] == '1':
+                    line[i + 1] = 1
+                line_attr.append(line[i + 1]) # attribute -> one-hot encoding
            
-            # line_attr[:3] -> ['Black_Hair', 'Blond_Hair', 'Brown_Hair']에 대해서 겹치는 부분을 처리해야 한다.
+            # line_attr[:3] -> ['Black_Hair', 'Blond_Hair', 'Brown_Hair']에 대해서 겹치는 부분을 처리해야 한다. -> 이 부분은 처리하지 않아도 될 듯.
             for j in range(len(line_attr[:3])): # j -> 0, 1, 2
                 if line_attr[j] == 1: # 가장 처음 보이는 1을 가진 line_attr[j]
                     line_attr[j] = 1
@@ -63,9 +63,11 @@ class CelebA_DATASET(Dataset):
                     for k in range(len(line_attr[:3])): # k -> 0, 1, 2
                         if k!= j:
                             line_attr[k] = 0
-                
-            line_fin.append([image_file, line_attr])
+            
+            # 'Gray_Hair'에 대한 attribute에 대해서도 속성을 고려해줘야 한다.
 
+            line_fin.append([image_file, line_attr])
+            # print(line_fin)
         self.line_fin = line_fin
 
     def __len__(self): # dataset 크기, shuffle을 위해서는 dataset 크기 선언해야 한다.
@@ -89,6 +91,12 @@ class CelebA_DATASET(Dataset):
         # sample = [image_path, image, image_label]
         return sample # class의 최종 output
 
+# transform = transforms.ToTensor()
+# sample = CelebA_DATASET(data_path, attr_path, target_attrs, transform)
+# for idx, [image_path, image, image_label] in enumerate(sample):
+#     if idx >= 2000 and idx <= 3000:
+#         print(image_path, image_label)
+    
 # DataLoader
 class CelebA_DATALOADER(object):
     def __init__(self, data_path, attr_path, target_attrs, crop_size, image_size, batch_size, mode, num_workers):
@@ -116,7 +124,7 @@ class CelebA_DATALOADER(object):
 
     def data_loader(self):
         data_loader = DataLoader(dataset=self.sample, batch_size=self.batch_size, shuffle=(self.mode=='Train'), num_workers=self.num_workers, drop_last=(self.mode=='Train'))
-
+        # data_loader = DataLoader(dataset=self.sample, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, drop_last=(self.mode=='Train'))
         return data_loader
 
 # data_loader = CelebA_DATALOADER(data_path, attr_path, target_attrs, crop_size, image_size, batch_size, mode, num_workers)

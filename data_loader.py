@@ -6,11 +6,11 @@ import torch
 import os
 import random
 
-# image_dir = 'data/celeba/images/' # 상대 경로
-# attr_path = 'data/celeba/list_attr_celeba.txt'
-# selected_attrs = ['Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Male', 'Young']
-# transform = T.ToTensor()
-# mode = 'train'
+image_dir = 'data/celeba/images/' # 상대 경로
+attr_path = 'data/celeba/list_attr_celeba.txt'
+selected_attrs = ['Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Male', 'Young']
+transform = T.ToTensor()
+mode = 'train'
 
 # image + label
 class CelebA(data.Dataset):
@@ -44,8 +44,8 @@ class CelebA(data.Dataset):
             self.idx2attr[i] = attr_name
 
         lines = lines[2:]
-        random.seed(1234)
-        random.shuffle(lines)
+        # random.seed(1234)
+        # random.shuffle(lines)
         for i, line in enumerate(lines):
             split = line.split()
             filename = split[0]
@@ -55,13 +55,15 @@ class CelebA(data.Dataset):
             for attr_name in self.selected_attrs:
                 idx = self.attr2idx[attr_name]
                 label.append(values[idx] == '1')
+            
+            # print(label)
 
             if (i+1) < 2000:
                 self.test_dataset.append([filename, label])
             else:
                 self.train_dataset.append([filename, label])
 
-        print(self.train_dataset)
+        # print(self.train_dataset)
 
         print('Finished preprocessing the CelebA dataset...')
 
@@ -70,13 +72,20 @@ class CelebA(data.Dataset):
         dataset = self.train_dataset if self.mode == 'train' else self.test_dataset
         filename, label = dataset[index]
         image = Image.open(os.path.join(self.image_dir, filename))
-        return self.transform(image), torch.FloatTensor(label)
+        sample = [filename, self.transform(image), torch.FloatTensor(label)]
+        # return filename, self.transform(image), torch.FloatTensor(label)
+        return sample
 
     def __len__(self):
         """Return the number of images."""
         return self.num_images
 
-# image, label = CelebA(image_dir, attr_path, selected_attrs, transform, mode)
+sample= CelebA(image_dir, attr_path, selected_attrs, transform, mode)
+
+for idx, [file, image, label] in enumerate(sample):
+    print(file, label)
+    if idx == 1000:
+        break
 
 # transform
 def get_loader(image_dir, attr_path, selected_attrs, crop_size=178, image_size=128, 

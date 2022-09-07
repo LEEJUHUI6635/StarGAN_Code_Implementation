@@ -20,7 +20,7 @@ class Logger(object):
     def __init__(self, log_dir):
         """Initialize summary writer."""
         # self.writer = tf.summary.FileWriter(log_dir)
-        self.writer = SummaryWriter('StarGAN_test')
+        self.writer = SummaryWriter('StarGAN_test') # StarGAN_test = log_dir -> log 기록
     def scalar_summary(self, tag, value, step):
         """Add scalar summary."""
         # summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])

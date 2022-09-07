@@ -54,7 +54,7 @@ class StarGAN_Generator(nn.Module):
             self.conv_dim = self.conv_dim // 2
         self.generator_list.append(nn.Conv2d(in_channels=self.conv_dim, out_channels=3, kernel_size=7, stride=1, padding=3, bias=False))
         self.generator_list.append(nn.Tanh())
-        self.generator_block = nn.Sequential(*self.generator_list) # nn : parameter 선언 -> self로 받아 와서 우회해야 한다.
+        self.generator_block = nn.Sequential(*self.generator_list)
 
     def forward(self, image, label):
         label = label.reshape(self.batch_size, self.domain_dim, 1, 1)

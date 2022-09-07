@@ -81,7 +81,7 @@ if not os.path.exists(config.save_generator_path):
 if not os.path.exists(config.save_discriminator_path):
     os.mkdir(config.save_discriminator_path)
     
-# Data Loader
+# Data loader
 data_loader = CelebA_DATALOADER(data_path=config.data_path, attr_path=config.attr_path, target_attrs=config.target_attrs, crop_size=config.crop_size, image_size=config.image_size, batch_size=config.batch_size, mode=config.mode, num_workers=config.num_workers)
 data_loader = data_loader.data_loader()
 

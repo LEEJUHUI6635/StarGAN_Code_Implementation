@@ -1,11 +1,10 @@
 import torch
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 import os
 from PIL import Image
 
-# Custom Dataset
+# Custom dataset
 class CelebA_DATASET(Dataset):
     def __init__(self, data_path, attr_path, target_attrs, transform, mode):
         self.data_path = data_path 
@@ -23,7 +22,7 @@ class CelebA_DATASET(Dataset):
             if attr_name[i] in self.target_attrs: 
                 target_idx.append(i)
         lines = lines[2:]
-        # Test, Train Split
+        # Test, Train split
         if self.mode == 'Test':
             lines = lines[2:2000]
         elif self.mode == 'Train':
@@ -61,7 +60,7 @@ class CelebA_DATASET(Dataset):
         sample = [image, image_label]
         return sample
 
-# DataLoader
+# Dataloader
 class CelebA_DATALOADER(object):
     def __init__(self, data_path, attr_path, target_attrs, crop_size, image_size, batch_size, mode, num_workers):
         self.data_path = data_path

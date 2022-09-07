@@ -112,7 +112,7 @@ class Solver(object):
 
     def basic_setting(self):
         # Device
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # device -> dataset(image, label), model
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         # Model
         self.generator = StarGAN_Generator(domain_dim=self.domain_dim, batch_size=self.batch_size, image_size=self.image_size).to(self.device)
@@ -148,7 +148,7 @@ class Solver(object):
             images = images.to(self.device)
             labels = labels.to(self.device)
 
-            # Discriminator
+            # Discriminator 학습
             # real image
             out_src, out_cls = self.discriminator(images)            
             real_src_loss = - torch.mean(out_src)
@@ -176,7 +176,7 @@ class Solver(object):
             self.D_optimizer.step()
 
             if iters % self.train_iter == 0:
-                # Generator
+                # Generator 학습
                 fake_images = self.generator(images, trg_labels)
                 G_out_src, G_out_cls = self.discriminator(fake_images)
                 G_out_cls = G_out_cls.reshape(G_out_cls.size(0), G_out_cls.size(1))

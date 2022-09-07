@@ -177,7 +177,7 @@ class Solver(object):
 
             if iters % self.train_iter == 0:
                 # Generator
-                fake_images = self.generator(images, trg_labels) # 게임의 공평성을 위해, Discriminator 학습에서 이용했던 동일한 fake image를 사용해야 한다.
+                fake_images = self.generator(images, trg_labels)
                 G_out_src, G_out_cls = self.discriminator(fake_images)
                 G_out_cls = G_out_cls.reshape(G_out_cls.size(0), G_out_cls.size(1))
                 G_src_loss = - torch.mean(G_out_src)

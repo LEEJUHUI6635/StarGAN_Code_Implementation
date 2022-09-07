@@ -1,5 +1,5 @@
 # StarGAN Study
-## Train StarGAN using the CelebA dataset
+## Train
 <pre>
 <code>
   python JH_main.py --mode train

@@ -259,8 +259,7 @@ class Solver(object):
             out_src, out_cls = self.D(x_real)
             d_loss_real = - torch.mean(out_src) # A real/fake -> real image를 판별할 때, out_src를 최대화하여야 한다. = real image는 1로 판별되어야 하기 때문
             d_loss_cls = self.classification_loss(out_cls, label_org, self.dataset) # B label과 label 사이의 loss -> 정답 label과 똑같이 classification이 되어야 한다. -> Binary Cross Entropy
-            print(label_org) # Float
-            break
+
             # Compute loss with fake images.
             x_fake = self.G(x_real, c_trg)
             out_src, out_cls = self.D(x_fake.detach())

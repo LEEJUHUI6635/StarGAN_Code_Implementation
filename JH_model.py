@@ -1,36 +1,25 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-# data_path = 'data/celeba/images/' # 상대 경로
-# attr_path = 'data/celeba/list_attr_celeba.txt'
-# target_attrs = ['Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Male', 'Young']
-# crop_size = 178
-# image_size = 128
-# batch_size = 16
-# mode = 'Train'
-# num_workers = 1
-# domain_dim = 5
 
 # Residual Block
 class Residual_Block(nn.Module):
     def __init__(self):
         super(Residual_Block, self).__init__()
         residual_list = []
-        
         residual_list.append(nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1, bias=False))
         residual_list.append(nn.InstanceNorm2d(num_features=256, affine=True, track_running_stats=True))
         residual_list.append(nn.ReLU(inplace=True))
         residual_list.append(nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1, bias=False))
         residual_list.append(nn.InstanceNorm2d(num_features=256, affine=True, track_running_stats=True))
-
         self.residual_block = nn.Sequential(*residual_list)
 
     def forward(self, x):
         out = self.residual_block(x) + x
         return out
 
-# Generator : input -> image [height, width, 3 + domain], output -> [height, width, 3]
+# Generator
+# input -> [height, width, 3 + domain]
+# output -> [height, width, 3]
 class StarGAN_Generator(nn.Module):
     def __init__(self, domain_dim=5, batch_size=16, image_size=128):
         super(StarGAN_Generator, self).__init__()
@@ -39,15 +28,14 @@ class StarGAN_Generator(nn.Module):
         self.batch_size = batch_size
         self.image_size = image_size
         self.generator_list = []
-        self.down_sampling() # return 값이 없다.
-        self.bottleneck() # return 값이 없다.
-        self.up_sampling() # return 값이 없다.
+        self.down_sampling() 
+        self.bottleneck() 
+        self.up_sampling()
 
     def down_sampling(self):
         self.generator_list.append(nn.Conv2d(in_channels=3+self.domain_dim, out_channels=self.conv_dim, kernel_size=7, stride=1, padding=3, bias=False))
         self.generator_list.append(nn.InstanceNorm2d(num_features=self.conv_dim, affine=True, track_running_stats=True))
         self.generator_list.append(nn.ReLU(inplace=True))
-        
         for i in range(2):
             self.generator_list.append(nn.Conv2d(in_channels=self.conv_dim, out_channels=self.conv_dim*2, kernel_size=4, stride=2, padding=1, bias=False))
             self.generator_list.append(nn.InstanceNorm2d(num_features=self.conv_dim*2, affine=True, track_running_stats=True))
@@ -68,18 +56,16 @@ class StarGAN_Generator(nn.Module):
         self.generator_list.append(nn.Tanh())
         self.generator_block = nn.Sequential(*self.generator_list) # nn : parameter 선언 -> self로 받아 와서 우회해야 한다.
 
-    def forward(self, image, label): # image, label
-        # generator_block = nn.Sequential(*self.generator_list)
-
-        # image + label -> [16, 3+5, 128, 128]
-        # image -> [16, 3, 128, 128], label -> [16, 5], 서로 다른 크기를 어떻게 붙일 것인가?
+    def forward(self, image, label):
         label = label.reshape(self.batch_size, self.domain_dim, 1, 1)
         label = label.repeat(1, 1, self.image_size, self.image_size)
         out = torch.cat([image, label], dim = 1)
         out = self.generator_block(out)
         return out
 
-# Discriminator : input -> image [height, width, 3], output -> src [height//64, width//64, 1] -> real/fake + cls [1, 1, domain] -> 어떠한 label인가?
+# Discriminator
+# input -> [height, width, 3]
+# output -> [height//64, width//64, 1], [1, 1, domain]
 class StarGAN_Discriminator(nn.Module):
     def __init__(self, domain_dim, image_size):
         super(StarGAN_Discriminator, self).__init__()
@@ -87,9 +73,9 @@ class StarGAN_Discriminator(nn.Module):
         self.domain_dim = domain_dim
         self.conv_dim = 64
         self.image_size = image_size
-        self.input_layer() # return 값이 없다.
-        self.hidden_layer() # return 값이 없다.
-        self.output_layer() # return 값이 없다.
+        self.input_layer()
+        self.hidden_layer()
+        self.output_layer()
 
     def input_layer(self):
         self.discriminator_layer.append(nn.Conv2d(in_channels=3, out_channels=self.conv_dim, kernel_size=4, stride=2, padding=1))
@@ -103,7 +89,6 @@ class StarGAN_Discriminator(nn.Module):
 
     def output_layer(self):
         self.discriminator_block = nn.Sequential(*self.discriminator_layer)
-
         self.src_out = nn.Conv2d(in_channels=self.conv_dim, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False)
         self.cls_out = nn.Conv2d(in_channels=self.conv_dim, out_channels=self.domain_dim, kernel_size=self.image_size//64, stride=1, padding=0, bias=False)
         
@@ -111,89 +96,4 @@ class StarGAN_Discriminator(nn.Module):
         hidden = self.discriminator_block(image)
         out_src = self.src_out(hidden)
         out_cls = self.cls_out(hidden)
-        
         return out_src, out_cls
-
-# class ResidualBlock(nn.Module):
-#     """Residual Block with instance normalization."""
-#     def __init__(self, dim_in, dim_out):
-#         super(ResidualBlock, self).__init__()
-#         self.main = nn.Sequential(
-#             nn.Conv2d(dim_in, dim_out, kernel_size=3, stride=1, padding=1, bias=False),
-#             nn.InstanceNorm2d(dim_out, affine=True, track_running_stats=True),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(dim_out, dim_out, kernel_size=3, stride=1, padding=1, bias=False),
-#             nn.InstanceNorm2d(dim_out, affine=True, track_running_stats=True))
-
-#     def forward(self, x):
-#         return x + self.main(x)
-
-
-# class StarGAN_Generator(nn.Module):
-#     """Generator network."""
-#     def __init__(self, conv_dim=64, c_dim=5, repeat_num=6):
-#         super(StarGAN_Generator, self).__init__()
-
-#         layers = []
-#         layers.append(nn.Conv2d(3+c_dim, conv_dim, kernel_size=7, stride=1, padding=3, bias=False))
-#         layers.append(nn.InstanceNorm2d(conv_dim, affine=True, track_running_stats=True))
-#         layers.append(nn.ReLU(inplace=True))
-
-#         # Down-sampling layers.
-#         curr_dim = conv_dim
-#         for i in range(2):
-#             layers.append(nn.Conv2d(curr_dim, curr_dim*2, kernel_size=4, stride=2, padding=1, bias=False))
-#             layers.append(nn.InstanceNorm2d(curr_dim*2, affine=True, track_running_stats=True))
-#             layers.append(nn.ReLU(inplace=True))
-#             curr_dim = curr_dim * 2
-
-#         # Bottleneck layers.
-#         for i in range(repeat_num):
-#             layers.append(ResidualBlock(dim_in=curr_dim, dim_out=curr_dim))
-
-#         # Up-sampling layers.
-#         for i in range(2):
-#             layers.append(nn.ConvTranspose2d(curr_dim, curr_dim//2, kernel_size=4, stride=2, padding=1, bias=False))
-#             layers.append(nn.InstanceNorm2d(curr_dim//2, affine=True, track_running_stats=True))
-#             layers.append(nn.ReLU(inplace=True))
-#             curr_dim = curr_dim // 2
-
-#         layers.append(nn.Conv2d(curr_dim, 3, kernel_size=7, stride=1, padding=3, bias=False))
-#         layers.append(nn.Tanh())
-#         self.main = nn.Sequential(*layers)
-
-#     def forward(self, x, c):
-#         # Replicate spatially and concatenate domain information.
-#         # Note that this type of label conditioning does not work at all if we use reflection padding in Conv2d.
-#         # This is because instance normalization ignores the shifting (or bias) effect.
-#         # print(c.shape) # [16, 5]
-#         c = c.view(c.size(0), c.size(1), 1, 1) # [16, 5]
-#         c = c.repeat(1, 1, x.size(2), x.size(3)) #  [16, 5, 128, 128]
-#         x = torch.cat([x, c], dim=1) # [16, 3+5, 128, 128]
-#         return self.main(x)
-
-
-# class StarGAN_Discriminator(nn.Module):
-#     """Discriminator network with PatchGAN."""
-#     def __init__(self, image_size=128, conv_dim=64, c_dim=5, repeat_num=6):
-#         super(StarGAN_Discriminator, self).__init__()
-#         layers = []
-#         layers.append(nn.Conv2d(3, conv_dim, kernel_size=4, stride=2, padding=1))
-#         layers.append(nn.LeakyReLU(0.01))
-
-#         curr_dim = conv_dim
-#         for i in range(1, repeat_num):
-#             layers.append(nn.Conv2d(curr_dim, curr_dim*2, kernel_size=4, stride=2, padding=1))
-#             layers.append(nn.LeakyReLU(0.01))
-#             curr_dim = curr_dim * 2
-
-#         kernel_size = int(image_size / np.power(2, repeat_num))
-#         self.main = nn.Sequential(*layers)
-#         self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
-#         self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
-        
-#     def forward(self, x):
-#         h = self.main(x)
-#         out_src = self.conv1(h)
-#         out_cls = self.conv2(h)
-#         return out_src, out_cls.view(out_cls.size(0), out_cls.size(1))

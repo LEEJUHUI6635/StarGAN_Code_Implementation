@@ -12,16 +12,6 @@
 </code>
 </pre>
 ## To Refine
-<pre>
-<code>
   1. 시간 측정
   2. GPU-util
   3. RaFD datset
-</code>
-</pre>
-## Reference code
-<pre>
-<code>
-  StarGAN-pytorch official code
-</code>
-</pre> 

@@ -1,5 +1,5 @@
 ## StarGAN Study
-'''bash
+
 # Train StarGAN using the CelebA dataset
 python JH_main.py --mode train
 # JH Google Drive
